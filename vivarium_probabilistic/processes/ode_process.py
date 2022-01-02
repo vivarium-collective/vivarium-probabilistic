@@ -1,3 +1,9 @@
+"""
+===========
+ODE Process
+===========
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
@@ -19,6 +25,7 @@ class ODE(Process):
         'variables': [],
         'dt': 1e-2,
     }
+
     def __init__(self, parameters=None):
         super().__init__(parameters)
 
@@ -72,6 +79,7 @@ def get_repressilator(
 
 
 def main(total_time=100.0):
+    # make a repressilator ODE function
     repressilator = get_repressilator(
         beta=0.5,
         alpha0=0,
@@ -79,7 +87,7 @@ def main(total_time=100.0):
         n=2,
     )
 
-    # make the vivarium process
+    # make the ode process
     variables = [
         'm0', 'm1', 'm2', 'p0', 'p1', 'p2']
     ode_config = {
@@ -88,14 +96,15 @@ def main(total_time=100.0):
         'time_step': 0.1,
     }
     process = ODE(ode_config)
-    
+
+    # declare the initial state
     initial_state = {
         'm0': 1.0,
         'm1': 4.0,
         'm2': 1.0,
         'p0': 2.0,
         'p1': 1.0,
-        'p2': 1.0
+        'p2': 1.0,
     }
 
     # run simulation
