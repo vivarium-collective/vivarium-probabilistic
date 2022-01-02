@@ -7,14 +7,13 @@ with open("README.md", 'r') as readme:
     long_description = readme.read()
 
 setup(
-    name='',  # TODO: Put your package name here.
+    name='vivarium-probabilistic',
     version='0.0.1',
     packages=[
-        # TODO: Replace 'template' with the name of your folder.
-        'template',
-        'template.processes',
-        'template.composites',
-        'template.experiments',
+        'vivarium_probabilistic',
+        'vivarium_probabilistic.processes',
+        'vivarium_probabilistic.composites',
+        'vivarium_probabilistic.experiments',
     ],
     author='',  # TODO: Put your name here.
     author_email='',  # TODO: Put your email here.
@@ -22,14 +21,13 @@ setup(
     license='',  # TODO: Choose a license.
     entry_points={
         'console_scripts': []},
-    short_description='',  # TODO: Describe your project briefely.
+    short_description='',  # TODO: Describe your project briefly.
     long_description=long_description,
     long_description_content_type='text/markdown',
     package_data={},
     include_package_data=True,
     install_requires=[
-        'vivarium-core>=0.3.0',
+        'vivarium-core>=0.4.17',
         'pytest',
-        # TODO: Add other dependencies.
     ],
 )
