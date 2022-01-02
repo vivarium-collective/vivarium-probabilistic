@@ -11,8 +11,9 @@ import torch
 from torch import Tensor
 from vivarium.core.process import Process
 from vivarium.core.store import Store
+from vivarium.core.engine import Engine
 from vivarium_probabilistic.processes.ode_process import (
-    ODE, arrays_from, get_repressilator_config)
+    ODE, get_repressilator_config)
 from vivarium.core.composition import simulate_process
 
 
@@ -47,17 +48,18 @@ class ProbabilisticWrapper(Process):
     def ports_schema(self):
         schema = self.process.ports_schema()
         probabilistic_schema = convert_schema_probabilistic(schema)
-        return {
+        new_schema = {
             'process': schema,
-            'prior': probabilistic_schema,
+            'priors': probabilistic_schema,
         }
+        return new_schema
 
     def next_update(self, timestep, states):
-        input_sample = self.sample(states['prior'])
+        input_sample = self.sample(states['priors'])
         update = self.process.next_update(timestep, input_sample)
         return {
             'process': update,
-            'prior': {}  # TODO -- update the prior?
+            'priors': {}  # TODO -- update the prior?
         }
 
     def sample(self, states):
@@ -87,19 +89,23 @@ def test_probwrapper(total_time=100.0):
     }
     probabilistic_process = ProbabilisticWrapper(probabilistic_config)
 
-    # run simulation
-    sim_config = {
-        'total_time': total_time,
-        # 'initial_state': {
-        #     'variables': initial_state,
-        # },
-        'return_raw_data': True,
-    }
-    output = simulate_process(probabilistic_process, sim_config)
+    # make and run a simulation
+    sim = Engine(
+        processes={
+            'probabilistic_ode': probabilistic_process},
+        topology={
+            'probabilistic_ode': {
+                'process': ('process',),
+                'priors': ('priors',),
+            }
+        },
+        # initial_state=
+    )
+    sim.update(total_time)
 
-    import ipdb; ipdb.set_trace()
+    # retrieve data, transform, and plot
+    data = sim.emitter.get_data()
 
-    # # transform and plot
     # variable_ids = list(initial_state.keys())
     # results = None
     # time = np.array([t for t in output.keys()])

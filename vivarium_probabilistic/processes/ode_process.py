@@ -21,47 +21,55 @@ def arrays_to(n, keys):
 
 class ODE(Process):
     defaults = {
-        'system': None,
-        'parameters': [],
-        'variables': [],
+        'system_generator': None,
+        'parameters': {},
+        'variable_ids': [],
         'internal_dt': 1e-2,
     }
 
     def __init__(self, parameters=None):
         super().__init__(parameters)
 
+        # make the system from the declared parameters and generator
+        system_generator = self.parameters['system_generator']
+        parameters = self.parameters['parameters']
+        self.system = system_generator(**parameters)
+        self.variable_ids = self.parameters['variable_ids']
+        self.dt = self.parameters['internal_dt']
+
     def set_parameters(self, parameters):
         # TODO -- expose parameters?
         pass
 
     def ports_schema(self):
+        """
+        put the variables under a "variables" port, declare their schema
+        """
         return {
             'variables': {
                 var_id: {
                     '_default': 0.0,
                     '_emit': True,
                     '_updater': 'set',
-                } for var_id in self.parameters['variables']
+                } for var_id in self.variable_ids
             }
         }
 
     def next_update(self, timestep, states):
 
         # get the system, the inputs, and the internal timestep
-        system = self.parameters['system']
         inputs = states['variables']
-        dt = self.parameters['internal_dt']
 
         # put variables in array
-        initial_state = arrays_from(inputs, self.parameters['variables'])
-        time = np.linspace(0.0, timestep, int(timestep/dt))
+        state_array = arrays_from(inputs, self.variable_ids)
+        time = np.linspace(0.0, timestep, int(timestep/self.dt))
 
         # solve odes
-        output = odeint(system, initial_state, time)
+        output = odeint(self.system, state_array, time)
 
         # return results
         final_state = output[-1, :]
-        results = arrays_to(final_state, self.parameters['variables'])
+        results = arrays_to(final_state, self.variable_ids)
         return {'variables': results}
 
 
@@ -85,20 +93,18 @@ def get_repressilator(
     return repressilator
 
 def get_repressilator_config():
-    # make a repressilator ODE function
-    repressilator = get_repressilator(
-        beta=0.5,
-        alpha0=0,
-        alpha=100,
-        n=2,
-    )
-
-    # make the ode process
-    variables = [
-        'm0', 'm1', 'm2', 'p0', 'p1', 'p2']
+    # make the ode process configuration
+    variable_ids = ['m0', 'm1', 'm2', 'p0', 'p1', 'p2']
+    parameters = {
+        'beta': 0.5,
+        'alpha0': 0,
+        'alpha': 100,
+        'n': 2,
+    }
     ode_config = {
-        'system': repressilator,
-        'variables': variables,
+        'system_generator': get_repressilator,
+        'variable_ids': variable_ids,
+        'parameters': parameters,
         'time_step': 0.1,
     }
     # declare the initial state
