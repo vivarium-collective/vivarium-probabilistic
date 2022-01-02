@@ -22,12 +22,17 @@ def arrays_to(n, keys):
 class ODE(Process):
     defaults = {
         'system': None,
+        'parameters': [],
         'variables': [],
-        'dt': 1e-2,
+        'internal_dt': 1e-2,
     }
 
     def __init__(self, parameters=None):
         super().__init__(parameters)
+
+    def set_parameters(self, parameters):
+        # TODO -- expose parameters?
+        pass
 
     def ports_schema(self):
         return {
@@ -41,9 +46,11 @@ class ODE(Process):
         }
 
     def next_update(self, timestep, states):
-        dt = self.parameters['dt']
+
+        # get the system, the inputs, and the internal timestep
         system = self.parameters['system']
         inputs = states['variables']
+        dt = self.parameters['internal_dt']
 
         # put variables in array
         initial_state = arrays_from(inputs, self.parameters['variables'])

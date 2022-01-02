@@ -22,6 +22,8 @@ class ProbabilisticWrapper(Process):
         self.process = self.parameters['process']
         self.process_ports = self.process.ports_schema()
 
+        # TODO -- get process parameters?
+
     def ports_schema(self):
         # TODO -- replace the process' variables with probability distributions
         return self.process_ports
@@ -38,7 +40,7 @@ class ProbabilisticWrapper(Process):
         return None
 
 
-def main(total_time=100.0):
+def test_probwrapper(total_time=100.0):
 
     # make a repressilator ODE process
     repressilator_config, initial_state = get_repressilator_config()
@@ -79,4 +81,4 @@ def main(total_time=100.0):
 
 # python vivarium_probabilistic/processes/probabilistic_wrapper.py
 if __name__ == '__main__':
-    main()
+    test_probwrapper()
