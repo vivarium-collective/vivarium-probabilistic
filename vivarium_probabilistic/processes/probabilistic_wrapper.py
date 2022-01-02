@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vivarium.core.process import Process
-from vivarium_probabilistic.processes.ode_process import ODE, arrays_from, get_repressilator
+from vivarium_probabilistic.processes.ode_process import (
+    ODE, arrays_from, get_repressilator_config)
 from vivarium.core.composition import simulate_process
 
 
@@ -31,39 +32,15 @@ class ProbabilisticWrapper(Process):
 
 def main(total_time=100.0):
 
-    # make a repressilator ODE function
-    repressilator = get_repressilator(
-        beta=0.5,
-        alpha0=0,
-        alpha=100,
-        n=2,
-    )
-
-    # make the ode process
-    variables = [
-        'm0', 'm1', 'm2', 'p0', 'p1', 'p2']
-    ode_config = {
-        'system': repressilator,
-        'variables': variables,
-        'time_step': 0.1,
-    }
-    process = ODE(ode_config)
+    # make a repressilator ODE process
+    repressilator_config, initial_state = get_repressilator_config()
+    process = ODE(repressilator_config)
 
     # make the probabilistic wrapper process
     probabilistic_config = {
         'process': process,
     }
     probabilistic_process = ProbabilisticWrapper(probabilistic_config)
-
-    # declare the initial state
-    initial_state = {
-        'm0': 1.0,
-        'm1': 4.0,
-        'm2': 1.0,
-        'p0': 2.0,
-        'p1': 1.0,
-        'p2': 1.0,
-    }
 
     # run simulation
     sim_config = {
@@ -76,15 +53,15 @@ def main(total_time=100.0):
     output = simulate_process(probabilistic_process, sim_config)
 
     # transform and plot
+    variable_ids = list(initial_state.keys())
     results = None
     time = np.array([t for t in output.keys()])
     for state in output.values():
-        array = arrays_from(state['variables'], variables)
+        array = arrays_from(state['variables'], variable_ids)
         if results is None:
             results = array
         else:
             results = np.vstack((results, array))
-
     # plot
     plt.plot(time, results[:, 0], time, results[:, 1], time, results[:, 2])
     plt.xlabel('t')
