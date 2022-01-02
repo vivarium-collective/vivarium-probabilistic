@@ -48,7 +48,7 @@ class ODE(Process):
         # return results
         final_state = output[-1, :]
         results = arrays_to(final_state, self.parameters['variables'])
-        return results
+        return {'variables': results}
 
 
 
@@ -122,8 +122,6 @@ def main(total_time=100.0):
     # time = np.linspace(0.0, total_time, 1000)
     # minit = np.array(list(initial_state.values()))
     # results = odeint(repressilator, minit, time)
-
-    import ipdb; ipdb.set_trace()
 
     # plot
     plt.plot(time, results[:, 0], time, results[:, 1], time, results[:, 2])
