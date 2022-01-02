@@ -4,6 +4,7 @@ Probabilistic Wrapper
 =====================
 """
 import numpy as np
+import copy
 import matplotlib.pyplot as plt
 
 # from torch.distributions.normal import Normal
@@ -13,14 +14,14 @@ from vivarium.core.process import Process
 from vivarium.core.store import Store
 from vivarium.core.engine import Engine
 from vivarium_probabilistic.processes.ode_process import (
-    ODE, get_repressilator_config)
-from vivarium.core.composition import simulate_process
+    ODE, arrays_from, get_repressilator_config)
 
 
 def convert_schema_probabilistic(schema):
     """convert port schema to pytorch distributions"""
     probabilistic_schema = {}
     for k, v in schema.items():
+        v = copy.deepcopy(v)
         if isinstance(v, dict):
             if set(Store.schema_keys).intersection(v.keys()):
                 default = v.get('_default', 0.0)
@@ -38,11 +39,17 @@ def convert_schema_probabilistic(schema):
 class ProbabilisticWrapper(Process):
     defaults = {
         'process': None,
+        'process_config': {}
     }
 
     def __init__(self, parameters=None):
         super().__init__(parameters)
-        self.process = self.parameters['process']
+
+        # make the input process object
+        process_class = self.parameters['process']
+        process_config = self.parameters['process_config']
+        self.process = process_class(process_config)
+
         # TODO -- get process parameters?
 
     def ports_schema(self):
@@ -81,11 +88,11 @@ def test_probwrapper(total_time=100.0):
 
     # make a repressilator ODE process
     repressilator_config, initial_state = get_repressilator_config()
-    process = ODE(repressilator_config)
 
     # make the probabilistic wrapper process
     probabilistic_config = {
-        'process': process,
+        'process': ODE,
+        'process_config': repressilator_config,
     }
     probabilistic_process = ProbabilisticWrapper(probabilistic_config)
 
@@ -105,21 +112,21 @@ def test_probwrapper(total_time=100.0):
 
     # retrieve data, transform, and plot
     data = sim.emitter.get_data()
-
-    # variable_ids = list(initial_state.keys())
-    # results = None
-    # time = np.array([t for t in output.keys()])
-    # for state in output.values():
-    #     array = arrays_from(state['variables'], variable_ids)
-    #     if results is None:
-    #         results = array
-    #     else:
-    #         results = np.vstack((results, array))
-    # # plot
-    # plt.plot(time, results[:, 0], time, results[:, 1], time, results[:, 2])
-    # plt.xlabel('t')
-    # plt.ylabel('y')
-    # plt.show()
+    var_data = {t: s['process']['variables'] for t, s in data.items()}
+    variable_ids = list(var_data[0.0].keys())
+    time = np.array([t for t in data.keys()])
+    results = None
+    for state in var_data.values():
+        array = arrays_from(state, variable_ids)
+        if results is None:
+            results = array
+        else:
+            results = np.vstack((results, array))
+    # plot
+    plt.plot(time, results[:, 0], time, results[:, 1], time, results[:, 2])
+    plt.xlabel('t')
+    plt.ylabel('y')
+    plt.show()
 
 
 # python vivarium_probabilistic/processes/probabilistic_wrapper.py
