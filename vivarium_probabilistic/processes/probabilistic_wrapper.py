@@ -20,14 +20,22 @@ class ProbabilisticWrapper(Process):
     def __init__(self, parameters=None):
         super().__init__(parameters)
         self.process = self.parameters['process']
+        self.process_ports = self.process.ports_schema()
 
     def ports_schema(self):
-        ports_schema = self.process.ports_schema()
-        return ports_schema
+        # TODO -- replace the process' variables with probability distributions
+        return self.process_ports
 
     def next_update(self, timestep, states):
+        # TODO - get update from probabilistic model
         update = self.process.next_update(timestep, states)
         return update
+
+    def sample(self):
+        return None
+
+    def observe(self):
+        return None
 
 
 def main(total_time=100.0):
