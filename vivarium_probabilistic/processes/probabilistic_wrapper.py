@@ -37,9 +37,16 @@ def convert_schema_probabilistic(schema):
 
 
 class ProbabilisticWrapper(Process):
+    """
+    Reads the Store of samples
+    Updates the the parameter weights
+    """
+
     defaults = {
         'process': None,
-        'process_config': {}
+        'process_config': {},
+        'number_of_samples': 1,
+        'observations': {},  # ground truth
     }
 
     def __init__(self, parameters=None):
@@ -47,8 +54,11 @@ class ProbabilisticWrapper(Process):
 
         # make the input process object
         process_class = self.parameters['process']
-        process_config = self.parameters['process_config']
-        self.process = process_class(process_config)
+        initial_parameters = self.parameters['process_config']
+
+        self.processes = [
+            process_class(initial_parameters)
+            for _ in range(self.parameters['number_of_samples'])]
 
         # TODO -- get process parameters?
 
@@ -56,18 +66,63 @@ class ProbabilisticWrapper(Process):
         schema = self.process.ports_schema()
         probabilistic_schema = convert_schema_probabilistic(schema)
         new_schema = {
-            'process': schema,
-            'priors': probabilistic_schema,
+            'process_states': {
+                idx: schema for idx in range(self.parameters['number_of_samples'])
+            },
+            # one parameter set for each process in self.processes
+            'parameter_samples': {
+                idx: {} for idx in range(self.parameters['number_of_samples'])
+            },
+            'parameter_weights': {
+                idx: {} for idx in range(self.parameters['number_of_samples'])
+            },
+            'observations': {},
         }
         return new_schema
 
+    def sample_parameters(self):
+        # TODO put the parameters in a store
+        return {}
+
+    def update_weights(self, prediction, observation, weights):
+        # TODO -- recursive on process state
+        error = (prediction - observation) ** 2
+        updated_weights = weights + error
+        return updated_weights
+
     def next_update(self, timestep, states):
-        input_sample = self.sample(states['priors'])
-        update = self.process.next_update(timestep, input_sample)
+
+        # read parameters from the store
+        process_states = states['process_states']
+        parameter_samples = states['parameter_samples']
+        parameter_weights = states['parameter_weights']
+        observations = states['observations']
+
+        # run multiple copies of the process,
+        process_update = {}
+        weights_update = {}
+        for idx, process in enumerate(self.processes):
+            # parameters = parameter_samples[idx] # TODO -- parameters only once in constructor
+            weights = parameter_weights[idx]
+
+            # update the process with the parameters. TODO -- need a ProbabilisticWrapper method for this.
+
+
+            # run the process with the previous final state
+            process_state = process_states[idx]
+            update = process.next_update(timestep, process_state)
+            process_update[idx] = update
+
+            # update the weights
+            # compare to observations
+            new_weights = self.update_weights(update, observations, weights)
+            weights_update[idx] = new_weights
+
         return {
-            'process': update,
-            'priors': {}  # TODO -- update the prior?
+            'process_states': process_update,
+            'parameter_weights': weights_update,
         }
+
 
     def sample(self, states):
         sample = {}
@@ -93,6 +148,7 @@ def test_probwrapper(total_time=100.0):
     probabilistic_config = {
         'process': ODE,
         'process_config': repressilator_config,
+        'observations': {}  # TODO -- put this in. array from underlying repressilator
     }
     probabilistic_process = ProbabilisticWrapper(probabilistic_config)
 
