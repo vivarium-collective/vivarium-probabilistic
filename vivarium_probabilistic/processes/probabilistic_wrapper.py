@@ -6,6 +6,7 @@ Probabilistic Wrapper
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+from scipy.integrate import odeint
 
 # from torch.distributions.normal import Normal
 import torch
@@ -35,6 +36,11 @@ def convert_schema_probabilistic(schema):
 
     return probabilistic_schema
 
+def sample_normal_parameters(parameters):
+    new_parameters = {}
+    for param_id, mean in parameters.items():
+        new_parameters[param_id] = np.random.normal(mean, scale=1.0)
+    return new_parameters
 
 class ProbabilisticWrapper(Process):
     """
@@ -54,35 +60,40 @@ class ProbabilisticWrapper(Process):
 
         # make the input process object
         process_class = self.parameters['process']
-        initial_parameters = self.parameters['process_config']
+        self.process_ids = [idx for idx in range(self.parameters['number_of_samples'])]
 
-        self.processes = [
-            process_class(initial_parameters)
-            for _ in range(self.parameters['number_of_samples'])]
+        # make the processes
+        self.processes = {}
+        self.priors = {}
+        for process_id in self.process_ids:
+            process_config = copy.deepcopy(self.parameters['process_config'])
 
-        # TODO -- get process parameters?
+            # sample new parameters
+            process_parameters = sample_normal_parameters(process_config['parameters'])
+            process_config['parameters'] = process_parameters
+
+            # save the sampled parameters, and make a process instance
+            self.priors[process_id] = process_parameters
+            self.processes[process_id] = process_class(process_config)
 
     def ports_schema(self):
         schema = self.process.ports_schema()
         probabilistic_schema = convert_schema_probabilistic(schema)
+
         new_schema = {
             'process_states': {
-                idx: schema for idx in range(self.parameters['number_of_samples'])
+                process_id: schema for process_id in self.process_ids
             },
-            # one parameter set for each process in self.processes
+            # one parameter set for each process
             'parameter_samples': {
-                idx: {} for idx in range(self.parameters['number_of_samples'])
+                process_id: {} for process_id in self.process_ids
             },
             'parameter_weights': {
-                idx: {} for idx in range(self.parameters['number_of_samples'])
+                process_id: {} for process_id in self.process_ids
             },
             'observations': {},
         }
         return new_schema
-
-    def sample_parameters(self):
-        # TODO put the parameters in a store
-        return {}
 
     def update_weights(self, prediction, observation, weights):
         # TODO -- recursive on process state
@@ -139,16 +150,28 @@ class ProbabilisticWrapper(Process):
         return None
 
 
-def test_probwrapper(total_time=100.0):
+def test_probwrapper(
+        total_time=100.0,
+        number_of_samples=10,
+):
 
     # make a repressilator ODE process
     repressilator_config, initial_state = get_repressilator_config()
+
+    # run repressilator directly and use results as observation data
+    system_generator = repressilator_config['system_generator']
+    parameters = repressilator_config['parameters']
+    repressilator = system_generator(**parameters)
+    time = np.linspace(0.0, total_time, 1000)
+    minit = np.array(list(initial_state.values()))
+    results = odeint(repressilator, minit, time)
 
     # make the probabilistic wrapper process
     probabilistic_config = {
         'process': ODE,
         'process_config': repressilator_config,
-        'observations': {}  # TODO -- put this in. array from underlying repressilator
+        'number_of_samples': number_of_samples,
+        'observations': results,
     }
     probabilistic_process = ProbabilisticWrapper(probabilistic_config)
 
