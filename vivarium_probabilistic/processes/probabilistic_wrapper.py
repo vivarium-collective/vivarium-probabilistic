@@ -185,7 +185,7 @@ def test_importance_sampling(
         'process_config': repressilator_config,
         'number_of_samples': number_of_samples,
         'time_step': time_step,
-        'std_dev': 0.2,
+        'std_dev': 0.5,
     }
     probabilistic_process = ImportanceSampler(probabilistic_config)
     process_ids = probabilistic_process.process_ids
@@ -236,15 +236,23 @@ def plot_process_output(
 
     # make figure and plot
     n_rows = len(process_ids)
-    n_cols = 3
+    n_cols = 4
     fig = plt.figure(figsize=(n_cols * 4, n_rows * 1.5))
     grid = plt.GridSpec(n_rows, n_cols)
-    row_idx = 0
 
+    # plot observed process
+    observed = timeseries['expected']['variables']
+    for var_id, var_timeseries in observed.items():
+        ax0 = fig.add_subplot(grid[0, 0])
+        ax0.plot(time_vec, var_timeseries, label=var_id)
+        ax0.set_title('expected output')
+
+    # plot sampled processes
+    row_idx = 0
     for process_id in process_ids:
-        ax1 = fig.add_subplot(grid[row_idx, 0])
-        ax2 = fig.add_subplot(grid[row_idx, 1])
-        ax3 = fig.add_subplot(grid[row_idx, 2])
+        ax1 = fig.add_subplot(grid[row_idx, 1])
+        ax2 = fig.add_subplot(grid[row_idx, 2])
+        ax3 = fig.add_subplot(grid[row_idx, 3])
 
         process_timeseries = timeseries['process_states'][process_id]['variables']
         process_weights = timeseries['parameter_weights'][process_id]['variables']
