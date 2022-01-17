@@ -22,7 +22,7 @@ from vivarium_probabilistic.processes.ode_process import (
     ODE, arrays_from, get_repressilator_config)
 
 
-def get_variables_from_schema(schema):
+def get_variables_from_schema(schema, emit=True, updater=None):
     """return a map from port to variable ids"""
     variables = {}
     for key, value in schema.items():
@@ -31,10 +31,13 @@ def get_variables_from_schema(schema):
                 default = value.get('_default', 0.0)
                 variables[key] = {
                     '_default': default,
-                    '_emit': True,
+                    '_emit': emit,
                 }
+                if updater:
+                    variables[key]['_updater'] = updater
             else:
-                variables[key] = get_variables_from_schema(value)
+                variables[key] = get_variables_from_schema(
+                    value, emit=emit, updater=updater)
         else:
             variables[key] = value
     # variable_values = list(variables.values())
@@ -92,16 +95,20 @@ class ProbabilisticWrapper(Process):
         self.observables = get_variables_from_schema(self.process_schema)
 
     def ports_schema(self):
+        sample_schema = get_variables_from_schema(
+            self.process_schema)
+        weight_schema = get_variables_from_schema(
+            self.process_schema, emit=True, updater='set')
         schema = {
             'process_states': {
                 process_id: self.process_schema
                 for process_id, process in self.processes.items()
             },
             'parameter_samples': {
-                process_id: self.observables for process_id in self.process_ids
+                process_id: sample_schema for process_id in self.process_ids
             },
             'parameter_weights': {
-                process_id: self.observables for process_id in self.process_ids
+                process_id: weight_schema for process_id in self.process_ids
             },
             'observations': self.observables,
         }
