@@ -92,7 +92,8 @@ def get_repressilator(
         return [dm0, dm1, dm2, dp0, dp1, dp2]
     return repressilator
 
-def get_repressilator_config():
+
+def get_repressilator_config(time_step=1.0):
     # make the ode process configuration
     variable_ids = ['m0', 'm1', 'm2', 'p0', 'p1', 'p2']
     parameters = {
@@ -105,16 +106,18 @@ def get_repressilator_config():
         'system_generator': get_repressilator,
         'variable_ids': variable_ids,
         'parameters': parameters,
-        'time_step': 0.1,
+        'time_step': time_step,
     }
     # declare the initial state
     initial_state = {
-        'm0': 1.0,
-        'm1': 4.0,
-        'm2': 1.0,
-        'p0': 2.0,
-        'p1': 1.0,
-        'p2': 1.0,
+        'variables': {
+            'm0': 1.0,
+            'm1': 4.0,
+            'm2': 1.0,
+            'p0': 2.0,
+            'p1': 1.0,
+            'p2': 1.0,
+        }
     }
     return ode_config, initial_state
 
@@ -126,15 +129,13 @@ def main(total_time=100.0):
     # run simulation
     sim_config = {
         'total_time': total_time,
-        'initial_state': {
-            'variables': initial_state,
-        },
+        'initial_state': initial_state,
         'return_raw_data': True,
     }
     output = simulate_process(process, sim_config)
 
     # transform and plot
-    variable_ids = list(initial_state.keys())
+    variable_ids = list(initial_state['variables'].keys())
     results = None
     time = np.array([t for t in output.keys()])
     for state in output.values():
