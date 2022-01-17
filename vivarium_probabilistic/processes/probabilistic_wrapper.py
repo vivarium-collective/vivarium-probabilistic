@@ -43,10 +43,10 @@ def get_variables_from_schema(schema):
     return variables
 
 
-def sample_normal_parameters(parameters):
+def sample_normal_parameters(parameters, std_dev=1.0):
     new_parameters = {}
     for param_id, mean in parameters.items():
-        new_parameters[param_id] = np.random.normal(mean, scale=1.0)
+        new_parameters[param_id] = np.random.normal(mean, scale=std_dev)
     return new_parameters
 
 
@@ -60,6 +60,7 @@ class ProbabilisticWrapper(Process):
         'process': None,
         'process_config': {},
         'number_of_samples': 1,
+        'std_dev': 1.0,
     }
 
     def __init__(self, parameters=None):
@@ -77,7 +78,9 @@ class ProbabilisticWrapper(Process):
         self.priors = {}
         for process_id in self.process_ids:
             # sample new parameters
-            process_parameters = sample_normal_parameters(process_config['parameters'])
+            process_parameters = sample_normal_parameters(
+                process_config['parameters'],
+                self.parameters['std_dev'])
             process_config['parameters'] = process_parameters
 
             # save the sampled parameters, and make a process instance
@@ -182,6 +185,7 @@ def test_importance_sampling(
         'process_config': repressilator_config,
         'number_of_samples': number_of_samples,
         'time_step': time_step,
+        'std_dev': 0.2,
     }
     probabilistic_process = ImportanceSampler(probabilistic_config)
     process_ids = probabilistic_process.process_ids
@@ -232,22 +236,38 @@ def plot_process_output(
 
     # make figure and plot
     n_rows = len(process_ids)
-    n_cols = 2
-    fig = plt.figure(figsize=(n_cols * 3, n_rows * 2))
+    n_cols = 3
+    fig = plt.figure(figsize=(n_cols * 4, n_rows * 1.5))
     grid = plt.GridSpec(n_rows, n_cols)
     row_idx = 0
 
     for process_id in process_ids:
         ax1 = fig.add_subplot(grid[row_idx, 0])
         ax2 = fig.add_subplot(grid[row_idx, 1])
-        row_idx += 1
+        ax3 = fig.add_subplot(grid[row_idx, 2])
+
         process_timeseries = timeseries['process_states'][process_id]['variables']
         process_weights = timeseries['parameter_weights'][process_id]['variables']
 
         for var_id, var_timeseries in process_timeseries.items():
             var_weights = process_weights[var_id]
-            ax1.plot(time_vec, var_timeseries, label=var_id)
-            ax2.plot(time_vec, var_weights, label=var_id)
+            ax2.plot(time_vec, var_timeseries, label=var_id)
+            ax3.plot(time_vec, var_weights, label=var_id)
+
+        # adjust
+        ax2.spines['right'].set_visible(False)
+        ax2.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+        ax3.spines['top'].set_visible(False)
+
+        # add text
+        ax1.text(0.6, 0.5, f'process {process_id}')
+        ax1.axis('off')
+        if row_idx == 0:
+            ax2.set_title('simulation output')
+            ax3.set_title('parameter weights')
+
+        row_idx += 1
 
     if out_dir:
         _save_fig_to_dir(fig, filename, out_dir)
