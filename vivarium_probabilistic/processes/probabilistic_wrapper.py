@@ -171,11 +171,9 @@ def test_importance_sampling(
         time_step=1.0,
         number_of_samples=10,
 ):
-
     # make a "ground truth" repressilator ODE process
     repressilator_config, initial_state = get_repressilator_config(
         time_step=time_step)
-    # ground truth process
     repressilator_process = ODE(repressilator_config)
 
     # make the probabilistic wrapper process
@@ -218,7 +216,11 @@ def test_importance_sampling(
 
     # retrieve data, transform, and plot
     timeseries = sim.emitter.get_timeseries()
-    plot_process_output(timeseries, process_ids, out_dir='out/', filename='importance_sampling')
+    plot_process_output(
+        timeseries,
+        process_ids,
+        out_dir='out/',
+        filename='importance_sampling')
 
 
 def plot_process_output(
@@ -230,18 +232,22 @@ def plot_process_output(
 
     # make figure and plot
     n_rows = len(process_ids)
-    n_cols = 1
+    n_cols = 2
     fig = plt.figure(figsize=(n_cols * 3, n_rows * 2))
     grid = plt.GridSpec(n_rows, n_cols)
     row_idx = 0
-    col_idx = 0
 
     for process_id in process_ids:
-        ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
+        ax1 = fig.add_subplot(grid[row_idx, 0])
+        ax2 = fig.add_subplot(grid[row_idx, 1])
         row_idx += 1
         process_timeseries = timeseries['process_states'][process_id]['variables']
+        process_weights = timeseries['parameter_weights'][process_id]['variables']
+
         for var_id, var_timeseries in process_timeseries.items():
-            ax.plot(time_vec, var_timeseries, label=var_id)
+            var_weights = process_weights[var_id]
+            ax1.plot(time_vec, var_timeseries, label=var_id)
+            ax2.plot(time_vec, var_weights, label=var_id)
 
     if out_dir:
         _save_fig_to_dir(fig, filename, out_dir)
